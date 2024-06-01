@@ -6,8 +6,8 @@ for custom content.
 > **NOTE**: This library is still in development and the API is subject to
 > change. Planned work:
 >
-> - Export a unified plugin that modifies the AST in place.
 > - Document the `^` syntax for assigning tokens to AST nodes.
+> - Fix position information in the AST.
 
 ## Usage
 
@@ -28,11 +28,10 @@ import remarkParse from "https://esm.sh/remark-parse@11.0.0";
 import { unified } from "https://esm.sh/unified@11.0.4";
 import { parseTokens } from "mod.ts";
 
-const root = parseTokens(
-  unified()
-    .use(remarkParse)
-    .parse(":hello:"),
-);
+const root = unified()
+  .use(remarkParse)
+  .use(() => parseTokens)
+  .parse(text);
 
 console.log(root);
 ```

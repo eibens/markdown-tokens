@@ -2,6 +2,7 @@ import type {
   Node,
   Parent,
   Root,
+  RootContent,
   Text,
 } from "https://esm.sh/v135/@types/mdast@4.0.4/index.d.ts";
 import "https://esm.sh/v135/@types/unist@3.0.2/index.d.ts";
@@ -27,29 +28,18 @@ function isParent(node: Node): node is Parent {
   return "children" in node;
 }
 
-function pushTokens(node: Node, tokens: string[]): Node {
+function pushTokens(node: Node, tokens: string[]) {
   if (!tokens.length) return node;
-  return {
-    ...node,
-    data: {
-      ...(node.data ?? {}),
-      tokens: [
-        ...node.data?.tokens ?? [],
-        ...tokens,
-      ],
-    },
-  };
+  if (!node.data) node.data = {};
+  if (!node.data.tokens) node.data.tokens = [];
+  node.data.tokens.push(...tokens);
 }
 
 function concat(a: Fragment, b: Fragment): Fragment {
-  const aEmpty = !a.children.length;
-  const bEmpty = !b.children.length;
+  const childBefore: undefined | Node = a.children[a.children.length - 1];
+  const childAfter: undefined | Node = b.children[0];
 
-  const childrenBefore = a.children.slice(0, -1);
-  const childBefore = a.children[a.children.length - 1];
-  const [childAfter, ...childrenAfter] = b.children;
-
-  if (aEmpty && bEmpty) {
+  if (!childBefore && !childAfter) {
     return {
       children: [],
       tokens: {
@@ -63,12 +53,10 @@ function concat(a: Fragment, b: Fragment): Fragment {
     };
   }
 
-  if (aEmpty) {
+  if (!childBefore) {
+    pushTokens(childAfter, a.tokens.after);
     return {
-      children: [
-        pushTokens(childAfter, a.tokens.after),
-        ...childrenAfter,
-      ],
+      children: b.children,
       tokens: {
         before: [...a.tokens.before, ...b.tokens.before],
         after: b.tokens.after,
@@ -80,12 +68,10 @@ function concat(a: Fragment, b: Fragment): Fragment {
     };
   }
 
-  if (bEmpty) {
+  if (!childAfter) {
+    pushTokens(childBefore, b.tokens.before);
     return {
-      children: [
-        ...childrenBefore,
-        pushTokens(childBefore, b.tokens.before),
-      ],
+      children: a.children,
       tokens: {
         before: a.tokens.before,
         after: [...a.tokens.after, ...b.tokens.after],
@@ -98,13 +84,13 @@ function concat(a: Fragment, b: Fragment): Fragment {
   }
 
   const text = { type: "text", value: " " };
+  pushTokens(childBefore, b.tokens.before);
+  pushTokens(childAfter, a.tokens.after);
   return {
     children: [
-      ...childrenBefore,
-      pushTokens(childBefore, b.tokens.before),
+      ...a.children,
       ...(a.space.after || b.space.before) ? [text] : [],
-      pushTokens(childAfter, a.tokens.after),
-      ...childrenAfter,
+      ...b.children,
     ],
     tokens: {
       before: a.tokens.before,
@@ -250,19 +236,16 @@ function parseNode(node: Parent): Fragment {
     return state;
   }
 
-  const rawNode = {
-    ...node,
-    children: state.children,
-  };
+  node.children = state.children as RootContent[];
 
   // Apply the fragment to the element.
-  const newNode = pushTokens(rawNode, [
+  pushTokens(node, [
     ...state.tokens.before,
     ...state.tokens.after,
   ]);
 
   return {
-    children: [newNode],
+    children: [node],
     tokens: { before: [], after: [] },
     space: { before: false, after: false },
   };

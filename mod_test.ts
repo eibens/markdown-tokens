@@ -11,6 +11,7 @@ import type {
   Text,
 } from "https://esm.sh/v135/@types/mdast@4.0.4/index.d.ts";
 import "https://esm.sh/v135/@types/unist@3.0.2/index.d.ts";
+import { visit } from "https://esm.sh/v135/unist-util-visit@5.0.0";
 import { isToken, parseTokens, Token } from "../markdown-tokens/mod.ts";
 
 /** HELPERS **/
@@ -31,25 +32,12 @@ type TokensTest = [...BasicTest, ExpectedTokens];
 
 type Test = BasicTest | TokensTest;
 
-function deleteMarkdownPosition(node: Node) {
-  delete node.position;
-  const hasChildren = "children" in node;
-  if (hasChildren) {
-    const parent = node as Parent;
-    parent.children.forEach((child) => deleteMarkdownPosition(child));
-  }
-  return true;
-}
-
-function parseMarkdown(
-  str: string,
-): Root {
-  const root = unified()
-    .use(remarkParse)
-    .use(gfm)
-    .parse(str) as Root;
-  deleteMarkdownPosition(root);
-  return root;
+function deleteMarkdownPosition() {
+  return (tree: Node) => {
+    visit(tree, (node) => {
+      delete node.position;
+    });
+  };
 }
 
 function stringifyMarkdown(
@@ -61,8 +49,16 @@ function stringifyMarkdown(
     .trim();
 }
 
-function parse(text: string) {
-  return parseTokens(parseMarkdown(text));
+function parse(text: string): Root {
+  const root = unified()
+    .use(remarkParse)
+    .use(gfm)
+    .parse(text);
+
+  return unified()
+    .use(() => parseTokens)
+    .use(deleteMarkdownPosition)
+    .runSync(root);
 }
 
 const tests: Test[] = [
