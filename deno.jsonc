@@ -1,0 +1,18 @@
+{
+  "lock": false,
+  "tasks": {
+    "fix": "deno fmt && deno task check && deno test --allow-read=.",
+    "check": "deno fmt --check && deno lint && deno check **/*.ts",
+    "coverage": "rm -rf coverage && deno test --coverage && deno coverage"
+  },
+  "lint": {
+    "rules": {
+      "tags": [
+        "recommended"
+      ]
+    }
+  },
+  "imports": {
+    "$std/": "https://deno.land/std@0.216.0/"
+  }
+}
